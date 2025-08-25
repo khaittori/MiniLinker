@@ -9,8 +9,13 @@ app = Flask(__name__)
 CORS(app)
 
 # --- Konfigurasi Database MongoDB ---
-# Menggunakan MONGO_URI dari environment variables
-app.config["MONGO_URI"] = os.environ.get('MONGO_URI', 'mongodb://mongo:27017/url_shortener')
+mongo_uri = os.environ.get('MONGO_URI')
+if not mongo_uri:
+    # Ini akan menghentikan aplikasi jika MONGO_URI tidak ditemukan,
+    # yang bagus untuk mendeteksi error dengan cepat.
+    raise RuntimeError("MONGO_URI environment variable is not set.")
+
+app.config["MONGO_URI"] = mongo_uri
 mongo = PyMongo(app)
 
 # --- Konfigurasi Folder Upload ---
