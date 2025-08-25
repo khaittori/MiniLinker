@@ -10,7 +10,7 @@ CORS(app)
 
 # --- Konfigurasi Database MongoDB ---
 # Menggunakan MONGO_URI dari environment variables
-app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/url_shortener")
+app.config["MONGO_URI"] = os.environ.get('MONGO_URI', 'mongodb://mongo:27017/url_shortener')
 mongo = PyMongo(app)
 
 # --- Konfigurasi Folder Upload ---
