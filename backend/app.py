@@ -8,15 +8,36 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-# --- Konfigurasi Database MongoDB ---
+# --- Konfigurasi Database MongoDB yang Lebih Kuat ---
 mongo_uri = os.environ.get('MONGO_URI')
-if not mongo_uri:
-    # Ini akan menghentikan aplikasi jika MONGO_URI tidak ditemukan,
-    # yang bagus untuk mendeteksi error dengan cepat.
-    raise RuntimeError("MONGO_URI environment variable is not set.")
 
-app.config["MONGO_URI"] = mongo_uri
-mongo = PyMongo(app)
+# Periksa apakah MONGO_URI ada. Jika tidak, hentikan aplikasi.
+if not mongo_uri:
+    # Di lingkungan lokal, kita bisa menggunakan fallback
+    if os.environ.get('FLASK_ENV') == 'development':
+        app.config["MONGO_URI"] = "mongodb://mongo:27017/url_shortener"
+    else:
+        # Di produksi (Koyeb), ini adalah error fatal.
+        raise RuntimeError("FATAL ERROR: MONGO_URI environment variable is not set.")
+else:
+    app.config["MONGO_URI"] = mongo_uri
+
+try:
+    mongo = PyMongo(app)
+    # Coba lakukan operasi sederhana untuk mengetes koneksi
+    mongo.db.command('ping')
+    print("MongoDB connection successful.")
+except Exception as e:
+    print(f"ERROR: Could not connect to MongoDB: {e}")
+    mongo = None # Pastikan mongo adalah None jika koneksi gagal
+
+# ... (sisa kode Anda, seperti @app.route) ...
+
+# Di dalam setiap fungsi route, tambahkan pengecekan
+@app.route('/api/urls')
+def get_all_urls():
+    if not mongo:
+        return jsonify({"error": "Database connection failed"}), 500
 
 # --- Konfigurasi Folder Upload ---
 UPLOAD_FOLDER = 'uploads'
