@@ -1,17 +1,13 @@
-# Gunakan Python 3.9 slim sebagai base image
 FROM python:3.9-slim
 
-# Set direktori kerja di dalam kontainer
 WORKDIR /app
 
-# Salin HANYA file requirements dari folder backend
-COPY backend/requirements.txt .
+# Salin file requirements dari root
+COPY requirements.txt .
 
-# Instal dependensi
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Salin seluruh isi folder backend ke direktori kerja
-COPY ./backend .
+# Salin semua file di root (sekarang sudah backend) ke kontainer
+COPY . .
 
-# Perintah untuk menjalankan aplikasi saat kontainer dimulai
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
