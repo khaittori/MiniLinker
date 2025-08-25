@@ -8,8 +8,8 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-# --- Konfigurasi Database MongoDB ---
-app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://mongo:27017/url_shortener")
+
+app.config["MONGO_URI"] = "mongodb+srv://minilinker_user:Nisa27@minilinkercluster.snwsg18.mongodb.net/?retryWrites=true&w=majority&appName=MiniLinkerCluster"
 mongo = PyMongo(app)
 
 # --- Konfigurasi Folder Upload ---
@@ -20,7 +20,12 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 @app.route('/')
 def home():
-    return jsonify({"message": "MiniLinker API is running!"})
+    try:
+        # Cek apakah koneksi ke MongoDB berhasil
+        mongo.db.urls.find_one()
+        return jsonify({"message": "MiniLinker API is running and MongoDB is connected!"})
+    except Exception as e:
+        return jsonify({"error": f"Failed to connect to MongoDB: {e}"})
 
 @app.route('/shorten', methods=['POST'])
 def shorten_url():
