@@ -8,8 +8,9 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-
-app.config["MONGO_URI"] = "mongodb+srv://minilinker_user:Nisa27@minilinkercluster.snwsg18.mongodb.net/?retryWrites=true&w=majority&appName=MiniLinkerCluster"
+# --- Konfigurasi Database MongoDB ---
+# Menggunakan MONGO_URI dari environment variables
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/url_shortener")
 mongo = PyMongo(app)
 
 # --- Konfigurasi Folder Upload ---
@@ -21,11 +22,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 @app.route('/')
 def home():
     try:
-        # Cek apakah koneksi ke MongoDB berhasil
+        # Cek koneksi MongoDB
         mongo.db.urls.find_one()
         return jsonify({"message": "MiniLinker API is running and MongoDB is connected!"})
     except Exception as e:
-        return jsonify({"error": f"Failed to connect to MongoDB: {e}"})
+        return jsonify({"error": f"Failed to connect to MongoDB: {str(e)}"}), 500
 
 @app.route('/shorten', methods=['POST'])
 def shorten_url():
@@ -64,9 +65,7 @@ def redirect_to_url(short_id):
         url_data = mongo.db.urls.find_one_or_404({'short_id': short_id})
         return redirect(url_data['long_url'])
     except Exception as e:
-        print(f"Error fetching URL for {short_id}: {e}")
-        return jsonify({"error": "URL not found"}), 404
-
+        return jsonify({"error": f"URL not found: {str(e)}"}), 404
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -95,3 +94,4 @@ def delete_url(short_id):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
