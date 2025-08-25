@@ -3,3 +3,4 @@ Flask-PyMongo
 Flask-Cors
 shortuuid
 werkzeug
+gunicorn
