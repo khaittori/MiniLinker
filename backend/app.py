@@ -55,8 +55,13 @@ def shorten_url():
 
 @app.route('/<short_id>')
 def redirect_to_url(short_id):
-    url_data = mongo.db.urls.find_one_or_404({'short_id': short_id})
-    return redirect(url_data['long_url'])
+    try:
+        url_data = mongo.db.urls.find_one_or_404({'short_id': short_id})
+        return redirect(url_data['long_url'])
+    except Exception as e:
+        print(f"Error fetching URL for {short_id}: {e}")
+        return jsonify({"error": "URL not found"}), 404
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
