@@ -1,22 +1,17 @@
-# BEFORE (Lambat)
-# FROM python:3.9-slim
-# WORKDIR /app
-# COPY . .
-# RUN pip install --no-cache-dir -r requirements.txt
-# CMD ["python", "app.py"]
-
-# AFTER (Cepat)
+# Gunakan Python 3.9 slim sebagai base image
 FROM python:3.9-slim
 
+# Set direktori kerja di dalam kontainer
 WORKDIR /app
 
-# 1. Salin HANYA file dependensi
-COPY requirements.txt .
+# Salin HANYA file requirements dari folder backend
+COPY backend/requirements.txt .
 
-# 2. Instal dependensi. Lapisan ini hanya akan berjalan ulang JIKA requirements.txt berubah.
+# Instal dependensi
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 3. Sekarang salin sisa kode. Jika hanya kode .py yang berubah, build akan dimulai dari sini dan sangat cepat.
-COPY . .
+# Salin seluruh isi folder backend ke direktori kerja
+COPY ./backend .
 
-CMD ["python", "app.py"]
+# Perintah untuk menjalankan aplikasi saat kontainer dimulai
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
