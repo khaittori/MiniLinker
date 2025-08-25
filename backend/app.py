@@ -8,9 +8,11 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-# --- Konfigurasi Database MongoDB ---
-# 'mongo' adalah nama service di docker-compose.yml
-app.config["MONGO_URI"] = "mongodb://mongo:27017/url_shortener"
+# --- Konfigurasi Database MongoDB Atlas ---
+app.config["MONGO_URI"] = os.getenv(
+    "MONGO_URI",
+    "mongodb+srv://minilinker_user:Nisa27@minilinkercluster.snwsg18.mongodb.net/?retryWrites=true&w=majority"
+)
 mongo = PyMongo(app)
 
 # --- Konfigurasi Folder Upload ---
@@ -19,6 +21,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# --- Root route ---
+@app.route('/')
+def index():
+    return jsonify({"message": "MiniLinker API is running!"})
+
+# --- Endpoint untuk shorten URL ---
 @app.route('/shorten', methods=['POST'])
 def shorten_url():
     if 'long_url' not in request.form:
@@ -28,15 +36,16 @@ def shorten_url():
     description = request.form.get('description', '')
     short_id = shortuuid.uuid()[:8]
 
+    # --- Handle thumbnail ---
     thumbnail_filename = ''
     if 'thumbnail' in request.files:
         file = request.files['thumbnail']
         if file.filename != '':
             thumbnail_filename = secure_filename(file.filename)
-            file.path = os.path.join(app.config['UPLOAD_FOLDER'], thumbnail_filename)
-            file.save(file.path)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], thumbnail_filename)
+            file.save(file_path)
 
-
+    # --- Simpan ke MongoDB ---
     mongo.db.urls.insert_one({
         'short_id': short_id,
         'long_url': long_url,
@@ -51,15 +60,18 @@ def shorten_url():
         "thumbnail": thumbnail_filename
     })
 
+# --- Redirect endpoint ---
 @app.route('/<short_id>')
 def redirect_to_url(short_id):
     url_data = mongo.db.urls.find_one_or_404({'short_id': short_id})
     return redirect(url_data['long_url'])
 
+# --- Serve uploaded thumbnail files ---
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+# --- Get all URLs ---
 @app.route('/api/urls')
 def get_all_urls():
     urls = []
@@ -73,7 +85,7 @@ def get_all_urls():
         })
     return jsonify(urls)
 
-#DELETE
+# --- Delete URL ---
 @app.route('/api/urls/<short_id>', methods=['DELETE'])
 def delete_url(short_id):
     result = mongo.db.urls.delete_one({'short_id': short_id})
@@ -82,7 +94,6 @@ def delete_url(short_id):
     else:
         return jsonify({"error": "URL tidak ditemukan"}), 404
 
-
-
+# --- Jalankan server ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
