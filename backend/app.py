@@ -17,76 +17,51 @@ if not os.path.exists(UPLOAD_FOLDER):
 # --- Konfigurasi Database MongoDB ---
 mongo_uri = os.environ.get('MONGO_URI')
 
-# Debugging: Cetak MONGO_URI untuk verifikasi
+# Debugging: Cetak MONGO_URI untuk verifikasi ABSOLUT
 print(f"Attempting to connect with MONGO_URI: {mongo_uri}")
 
-# Periksa apakah MONGO_URI ada. Jika tidak, aplikasi tidak bisa berjalan.
+# Periksa apakah MONGO_URI ada. Jika tidak, hentikan aplikasi.
 if not mongo_uri:
-    raise RuntimeError("FATAL ERROR: MONGO_URI environment variable is not set.")
+    print("FATAL ERROR: MONGO_URI environment variable is not set. Application cannot start.")
+    # Menggunakan sys.exit() agar lebih jelas menghentikan aplikasi
+    import sys
+    sys.exit(1) # Keluar dengan kode error
 
 app.config["MONGO_URI"] = mongo_uri
 
-# --- Inisialisasi PyMongo ---
-# Inisialisasi mongo dengan None terlebih dahulu
-mongo = None
+# Inisialisasi PyMongo
 try:
     print("Initializing PyMongo...")
-    mongo = PyMongo(app) # Coba inisialisasi PyMongo
+    mongo = PyMongo(app) 
     
-    # Coba lakukan operasi sederhana untuk mengetes koneksi.
-    # Jika PyMongo berhasil diinisialisasi, lakukan ping.
-    # Pastikan mongo.db tidak None sebelum mencoba akses.
-    if mongo and mongo.db: # Periksa apakah mongo objectnya valid
-        mongo.db.command('ping') # Gunakan command 'ping' untuk tes koneksi
+    # Coba lakukan operasi yang pasti akan gagal jika koneksi tidak ada
+    # Ini akan memicu pengecekan koneksi yang lebih dalam.
+    # Mengakses db.name saja mungkin belum cukup. Mari coba ping lagi.
+    # Jika mongo.client tidak ada, itu berarti PyMongo gagal diinisialisasi.
+    if mongo and mongo.client:
+        mongo.client.admin.command('ping') 
         print("MongoDB connection successful.")
     else:
-        # Jika mongo.db adalah None, berarti inisialisasi PyMongo mungkin gagal tanpa error eksplisit
-        raise Exception("PyMongo initialization resulted in None object.")
+        # Jika PyMongo diinisialisasi tapi mongo.client adalah None
+        raise Exception("PyMongo client is None after initialization.")
 
 except Exception as e:
-    print(f"FATAL ERROR: Failed to connect to MongoDB: {e}")
-    mongo = None # Pastikan mongo tetap None jika terjadi error
+    print(f"FATAL ERROR: Failed to connect to MongoDB during initialization: {e}")
+    # Pastikan mongo adalah None jika terjadi error saat inisialisasi
+    mongo = None 
 
 # --- API Endpoints ---
-
 # Pastikan semua endpoint yang menggunakan 'mongo' memiliki pemeriksaan tambahan
 @app.route('/shorten', methods=['POST'])
 def shorten_url():
     if not mongo: # Periksa jika koneksi gagal saat startup
         return jsonify({"error": "Database connection not available"}), 500
-        
-    if 'long_url' not in request.form:
-        return jsonify({"error": "URL panjang diperlukan"}), 400
-
-    long_url = request.form['long_url']
-    description = request.form.get('description', '')
-    short_id = shortuuid.uuid()[:8]
-
-    thumbnail_filename = ''
-    if 'thumbnail' in request.files:
-        file = request.files['thumbnail']
-        if file.filename != '':
-            thumbnail_filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], thumbnail_filename)
-            file.save(file_path)
-
-    try:
-        mongo.db.urls.insert_one({
-            'short_id': short_id,
-            'long_url': long_url,
-            'description': description,
-            'thumbnail': thumbnail_filename
-        })
-        short_url = request.host_url + short_id
-        return jsonify({"short_url": short_url, "description": description, "thumbnail": thumbnail_filename}), 201
-    except Exception as e:
-        return jsonify({"error": f"Database insertion failed: {e}"}), 500
+    # ... sisa kode ...
 
 @app.route('/<short_id>')
 def redirect_to_url(short_id):
     if not mongo:
         return jsonify({"error": "Database connection not available"}), 500
-        
     try:
         url_data = mongo.db.urls.find_one_or_404({'short_id': short_id})
         return redirect(url_data['long_url'])
@@ -95,14 +70,14 @@ def redirect_to_url(short_id):
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    # Handle case where uploads folder might not be persisted or accessible if needed
+    # Cek apakah mongo ada, jika tidak, tetap bisa melayani file statis
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/api/urls')
 def get_all_urls():
     if not mongo:
         return jsonify({"error": "Database connection not available"}), 500
-        
+    
     urls = []
     try:
         for url in mongo.db.urls.find():
@@ -132,7 +107,5 @@ def delete_url(short_id):
         return jsonify({"error": f"Database query failed: {e}"}), 500
 
 if __name__ == '__main__':
-    # Ini hanya untuk dijalankan secara lokal, Koyeb menggunakan gunicorn
-    # Pastikan Anda tidak menjalankan app.run() jika sudah menggunakan Gunicorn
-    # Jika Anda menjalankan dengan Gunicorn, bagian ini tidak akan dieksekusi
-    pass # Biarkan kosong jika Anda sudah menggunakan Gunicorn
+    # Ini hanya untuk dijalankan secara lokal. Gunicorn digunakan di Koyeb.
+    pass
