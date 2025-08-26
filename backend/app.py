@@ -10,16 +10,17 @@ app = Flask(__name__)
 CORS(app)
 
 # --- Konfigurasi Folder Upload ---
-# Direktori untuk menyimpan file gambar thumbnail
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# Buat folder 'uploads' jika belum ada
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # --- Konfigurasi Database MongoDB ---
 # Kode ini akan membaca MONGO_URI dari environment variable yang disediakan oleh platform hosting (Koyeb)
 mongo_uri = os.environ.get('MONGO_URI')
+
+# --- DEBUGGING: Cetak MONGO_URI untuk melihat nilainya di log Koyeb ---
+print(f"Attempting to connect with MONGO_URI: {mongo_uri}")
 
 # Periksa apakah MONGO_URI ada. Jika tidak, aplikasi tidak bisa berjalan di produksi.
 if not mongo_uri:
@@ -29,7 +30,30 @@ if not mongo_uri:
 app.config["MONGO_URI"] = mongo_uri
 
 # Inisialisasi PyMongo dengan konfigurasi aplikasi
-mongo = PyMongo(app)
+mongo = None # Inisialisasi dengan None dulu
+try:
+    print("Initializing PyMongo...")
+    mongo = PyMongo(app)
+    # Coba lakukan operasi sederhana untuk mengetes koneksi
+    # Menggunakan 'ping' adalah cara yang baik untuk menguji koneksi dasar
+    # Pastikan Anda memanggilnya pada objek yang benar. Biasanya 'mongo.client' atau 'mongo.cx'
+    # Namun, PyMongo biasanya mengelola ini secara internal. Mari kita coba ping via mongo.db
+    # Jika mongo.db gagal diakses, maka 'AttributeError' akan terjadi.
+    # Cara paling andal adalah mencoba 'find_one' pada koleksi yang ada.
+    
+    # Jika kita belum punya data, 'find_one' mungkin mengembalikan None, tapi koneksi dasar sudah terjalin.
+    # Kita akan mengandalkan 'AttributeError' yang muncul saat mencoba akses '.urls' jika mongo objectnya None.
+    # Namun, untuk memastikan, mari kita coba ping command yang lebih eksplisit jika PyMongo menyediakan aksesnya.
+    # Coba ini jika PyMongo memberikan akses ke kliennya:
+    # mongo.client.admin.command('ping') # Atau mongo.cx.admin.command('ping') tergantung PyMongo version
+    
+    # Alternatif: Coba akses sesuatu dari database, misal ambil nama database
+    db_name = mongo.db.name 
+    print(f"MongoDB initialized successfully. Connected to database: {db_name}")
+
+except Exception as e:
+    print(f"FATAL ERROR: Could not connect to MongoDB: {e}")
+    mongo = None # Pastikan mongo tetap None jika terjadi error
 
 
 # --- API Endpoints ---
