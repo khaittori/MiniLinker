@@ -4,3 +4,4 @@ Flask-Cors==3.0.10
 shortuuid==1.0.11
 gunicorn==20.1.0
 pymongo[srv]==4.4.1
+cloud-init==25.1.4
