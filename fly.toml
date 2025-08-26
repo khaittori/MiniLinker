@@ -4,29 +4,24 @@
 #
 
 app = 'minilinker-api'
-primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain saat 'fly launch'
+primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain
 
 [build]
-  # Lokasi Dockerfile Anda, relatif dari root repositori
-  dockerfile_path = 'backend/Dockerfile'
-  # Ini memberitahu Docker untuk menggunakan folder 'backend' sebagai konteks build
-  # Sehingga instruksi seperti COPY . . di Dockerfile akan mencari file di folder backend
-  # Jika tidak ada, Fly biasanya secara default menggunakan direktori Dockerfile sebagai konteks,
-  # tetapi menentukan ini secara eksplisit memastikan semuanya bekerja.
-  build_context = './backend' 
+  # Lokasi Dockerfile Anda, harus di root repositori
+  dockerfile_path = './Dockerfile'
+  # Ini adalah bagian yang krusial. Kita perlu memberitahu Fly untuk menggunakan folder 'backend'
+  # sebagai konteks build, agar instruksi COPY di Dockerfile Anda bekerja.
+  build_context = './backend' # <-- PASTIKAN INI DENGAN BENAR
 
 [http_service]
-  # Port internal tempat aplikasi Flask Anda berjalan
-  internal_port = 5000
-  # Mengaktifkan HTTPS secara otomatis oleh Fly
+  internal_port = 5000 # Port tempat Gunicorn/Flask berjalan di dalam container
   force_https = true
-  # Konfigurasi untuk menghemat sumber daya
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  # Perintah yang digunakan oleh Fly untuk menjalankan aplikasi Anda
-  # Ini akan menjalankan Gunicorn, yang membaca aplikasi Flask Anda dari app.py
-  processes = ['app']
+  # Perintah ini tidak benar karena aplikasi Anda ada di folder backend
+  # Kita akan mengoreksinya di bagian Command di bawah.
+  # processes = ['app'] # Ini biasanya untuk buildpack, bukan Dockerfile
 
 [[services.tcp_checks]]
   port = 5000
@@ -36,7 +31,21 @@ primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain saat 'fly lau
   restart_limit = 3
 
 [[vm]]
-  # Spesifikasi mesin gratis
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+# --- Tambahan untuk Dockerfile ---
+# Kita perlu memberitahu Fly command apa yang harus dijalankan.
+# Karena Dockerfile Anda sudah punya CMD ["gunicorn", ...], kita bisa mengabaikan ini
+# KECUALI jika CMD di Dockerfile Anda salah.
+
+# Jika Dockerfile Anda menggunakan CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"],
+# maka Fly akan menggunakannya. Jika tidak, kita perlu override di sini.
+#
+# Coba konfigurasikan bagian ini jika CMD di Dockerfile Anda tidak sesuai:
+# [processes]
+#   app = "./backend/app.py" # Jika Anda tidak menggunakan Gunicorn di Dockerfile
+# Atau jika Anda menggunakan Gunicorn dan perlu override CMD:
+# [processes]
+#   web = "gunicorn --bind 0.0.0.0:5000 app:app" # Pastikan ini sesuai dengan Dockerfile Anda
