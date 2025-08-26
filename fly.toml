@@ -6,12 +6,10 @@
 app = 'minilinker-api'
 primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain
 
+
 [build]
-  # Lokasi Dockerfile Anda, harus di root repositori
-  dockerfile_path = './Dockerfile'
-  # Ini adalah bagian yang krusial. Kita perlu memberitahu Fly untuk menggunakan folder 'backend'
-  # sebagai konteks build, agar instruksi COPY di Dockerfile Anda bekerja.
-  build_context = './backend' # <-- PASTIKAN INI DENGAN BENAR
+  dockerfile_path = './backend/Dockerfile'
+  build_context = './backend' 
 
 [http_service]
   internal_port = 5000 # Port tempat Gunicorn/Flask berjalan di dalam container
@@ -49,3 +47,4 @@ primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain
 # Atau jika Anda menggunakan Gunicorn dan perlu override CMD:
 # [processes]
 #   web = "gunicorn --bind 0.0.0.0:5000 app:app" # Pastikan ini sesuai dengan Dockerfile Anda
+# Force a rebuild
