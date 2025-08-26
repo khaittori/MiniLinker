@@ -1,0 +1,42 @@
+# fly.toml app configuration file generated for minilinker-api on 2025-08-26T11:55:33+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'minilinker-api'
+primary_region = 'sin' # Ganti 'sin' jika Anda memilih region lain saat 'fly launch'
+
+[build]
+  # Lokasi Dockerfile Anda, relatif dari root repositori
+  dockerfile_path = 'backend/Dockerfile'
+  # Ini memberitahu Docker untuk menggunakan folder 'backend' sebagai konteks build
+  # Sehingga instruksi seperti COPY . . di Dockerfile akan mencari file di folder backend
+  # Jika tidak ada, Fly biasanya secara default menggunakan direktori Dockerfile sebagai konteks,
+  # tetapi menentukan ini secara eksplisit memastikan semuanya bekerja.
+  build_context = './backend' 
+
+[http_service]
+  # Port internal tempat aplikasi Flask Anda berjalan
+  internal_port = 5000
+  # Mengaktifkan HTTPS secara otomatis oleh Fly
+  force_https = true
+  # Konfigurasi untuk menghemat sumber daya
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  # Perintah yang digunakan oleh Fly untuk menjalankan aplikasi Anda
+  # Ini akan menjalankan Gunicorn, yang membaca aplikasi Flask Anda dari app.py
+  processes = ['app']
+
+[[services.tcp_checks]]
+  port = 5000
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "5s"
+  restart_limit = 3
+
+[[vm]]
+  # Spesifikasi mesin gratis
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
