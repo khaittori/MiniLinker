@@ -16,39 +16,28 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # --- Konfigurasi Database MongoDB ---
 mongo_uri = os.environ.get('MONGO_URI')
-
-# Debugging: Cetak MONGO_URI untuk verifikasi ABSOLUT
 print(f"Attempting to connect with MONGO_URI: {mongo_uri}")
-
-# Periksa apakah MONGO_URI ada. Jika tidak, hentikan aplikasi.
 if not mongo_uri:
-    print("FATAL ERROR: MONGO_URI environment variable is not set. Application cannot start.")
-    # Menggunakan sys.exit() agar lebih jelas menghentikan aplikasi
-    import sys
-    sys.exit(1) # Keluar dengan kode error
+    print("FATAL ERROR: MONGO_URI is not set.")
+    # Jika menjalankan secara lokal, gunakan fallback
+    if os.environ.get('FLASK_ENV') == 'development':
+        mongo_uri = "mongodb://mongo:27017/url_shortener"
+        print(f"Using local fallback MONGO_URI: {mongo_uri}")
+    else:
+        import sys
+        sys.exit(1) # Hentikan jika di produksi dan tidak ada URI
 
 app.config["MONGO_URI"] = mongo_uri
 
 # Inisialisasi PyMongo
 try:
-    print("Initializing PyMongo...")
-    mongo = PyMongo(app) 
-    
-    # Coba lakukan operasi yang pasti akan gagal jika koneksi tidak ada
-    # Ini akan memicu pengecekan koneksi yang lebih dalam.
-    # Mengakses db.name saja mungkin belum cukup. Mari coba ping lagi.
-    # Jika mongo.client tidak ada, itu berarti PyMongo gagal diinisialisasi.
-    if mongo and mongo.client:
-        mongo.client.admin.command('ping') 
-        print("MongoDB connection successful.")
-    else:
-        # Jika PyMongo diinisialisasi tapi mongo.client adalah None
-        raise Exception("PyMongo client is None after initialization.")
-
+    mongo = PyMongo(app)
+    # Panggil metode sederhana untuk memicu koneksi, contohnya:
+    mongo.db.command('ping') # Ini butuh akses ke MongoDB 4.4+
+    print("MongoDB connection successful.")
 except Exception as e:
-    print(f"FATAL ERROR: Failed to connect to MongoDB during initialization: {e}")
-    # Pastikan mongo adalah None jika terjadi error saat inisialisasi
-    mongo = None 
+    print(f"FATAL ERROR: Could not connect to MongoDB: {e}")
+    mongo = None # Pastikan mongo adalah None jika koneksi gagal
 
 # --- API Endpoints ---
 # Pastikan semua endpoint yang menggunakan 'mongo' memiliki pemeriksaan tambahan
